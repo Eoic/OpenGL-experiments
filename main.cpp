@@ -4,6 +4,8 @@
 #include <SDL2/SDL.h>
 #include <glad/glad.h>
 #include <sstream>
+#include <filesystem>
+#include <unistd.h>
 
 // Globals.
 int gScreenHeight = 480;
@@ -116,6 +118,7 @@ std::string ReadShaderSource(const std::string &path) {
     std::ifstream file(path);
     std::stringstream buffer;
     buffer << file.rdbuf();
+
     return buffer.str();
 }
 
