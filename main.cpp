@@ -111,6 +111,29 @@ GLuint CompileShader(const GLuint type, const std::string& source) {
     glShaderSource(gShaderObject, 1, &cSource, nullptr);
     glCompileShader(gShaderObject);
 
+    int result;
+    glGetShaderiv(gShaderObject, GL_COMPILE_STATUS, &result);
+
+    if (result == GL_FALSE) {
+        int length;
+        glGetShaderiv(gShaderObject, GL_INFO_LOG_LENGTH, &length);
+        char* errorMessages = new char[length];
+        glGetShaderInfoLog(gShaderObject, length, &length, errorMessages);
+
+        switch (type) {
+            case GL_VERTEX_SHADER:
+                std::cerr << "GL_VERTEX_SHADER compilation failed: " << errorMessages << std::endl;
+            case GL_FRAGMENT_SHADER:
+                std::cerr << "GL_FRAGMENT_SHADER compilation failed: " << errorMessages << std::endl;
+            default:
+                std::cerr << "Shader compilation error: " << errorMessages << std::endl;
+        }
+
+        delete[] errorMessages;
+        glDeleteShader(gShaderObject);
+        return 0;
+    }
+
     return gShaderObject;
 }
 
@@ -163,6 +186,7 @@ void Draw() {
     glBindVertexArray(gVAO);
     glBindBuffer(GL_ARRAY_BUFFER, gVBO);
     glDrawArrays(GL_TRIANGLES, 0, 3);
+    glUseProgram(0);
 }
 
 void MainLoop() {
