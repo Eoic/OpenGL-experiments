@@ -16,6 +16,7 @@ SDL_GLContext gContext = nullptr;
 SDL_DisplayMode gDisplayMode;
 GLuint gVAO = 0;
 GLuint gVBO = 0;
+GLuint gEBO = 0;
 GLuint gPipelineProgram = 0;
 
 void GetOpenGLVersionInfo() {
@@ -72,10 +73,24 @@ void InitializeProgram() {
 }
 
 void VertexSpecification() {
-    const std::vector<GLfloat> vertexPositions {
-        -0.8f, -0.8f, 0.0f,
-        0.8f, -0.8f, 0.0f,
-        0.0f, 0.8f, 0.0f
+    const std::vector vertexData {
+        // V. #0.
+        -0.5f, -0.5f, 0.0f, // Position.
+        1.0f, 0.0f, 0.0f,   // Color.
+        // V. #1.
+        0.5f, -0.5f, 0.0f,  // Position.
+        0.0f, 1.0f, 0.0f,   // Color.
+        // V. #2.
+        -0.5f, 0.5f, 0.0f,  // Position.
+        0.0f, 0.0f, 1.0f,   // Color.
+        // V. #3.
+        0.5f, 0.5f, 0.0f,   // Position.
+        1.0f, 0.0f, 0.0f,   // Color.
+    };
+
+    const std::vector<GLuint> indices {
+        0, 1, 2,
+        1, 3, 2,
     };
 
     // Create VAO.
@@ -85,13 +100,21 @@ void VertexSpecification() {
     // Generate VBO.
     glGenBuffers(1, &gVBO);
     glBindBuffer(GL_ARRAY_BUFFER, gVBO);
-    glBufferData(GL_ARRAY_BUFFER, vertexPositions.size() * sizeof(GLfloat), vertexPositions.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, vertexData.size() * sizeof(GLfloat), vertexData.data(), GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, static_cast<void*>(nullptr));
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 6, static_cast<GLvoid*>(nullptr));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 6, static_cast<GLvoid*>(nullptr) + sizeof(GLfloat) * 3);
+
+    // Generate IBO (EBO).
+    glGenBuffers(1, &gEBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
 
     // Cleanup.
     glBindVertexArray(0);
     glDisableVertexAttribArray(0);
+    glDisableVertexAttribArray(1);
 }
 
 GLuint CompileShader(const GLuint type, const std::string& source) {
@@ -139,6 +162,12 @@ GLuint CompileShader(const GLuint type, const std::string& source) {
 
 std::string ReadShaderSource(const std::string &path) {
     std::ifstream file(path);
+
+    if (!file.is_open()) {
+        std::cerr << "Could not read shader source from '"  << path << "'." << std::endl;
+        exit(1);
+    }
+
     std::stringstream buffer;
     buffer << file.rdbuf();
 
@@ -146,9 +175,9 @@ std::string ReadShaderSource(const std::string &path) {
 }
 
 GLuint CreateShaderProgram(const std::string& vertexShaderPath, const std::string& fragmentShaderPath) {
-    GLuint gProgram = glCreateProgram();
-    GLuint vertexShader = CompileShader(GL_VERTEX_SHADER, ReadShaderSource(vertexShaderPath));
-    GLuint fragmentShader = CompileShader(GL_FRAGMENT_SHADER, ReadShaderSource(fragmentShaderPath));
+    const GLuint gProgram = glCreateProgram();
+    const GLuint vertexShader = CompileShader(GL_VERTEX_SHADER, ReadShaderSource(vertexShaderPath));
+    const GLuint fragmentShader = CompileShader(GL_FRAGMENT_SHADER, ReadShaderSource(fragmentShaderPath));
 
     glAttachShader(gProgram, vertexShader);
     glAttachShader(gProgram, fragmentShader);
@@ -159,7 +188,10 @@ GLuint CreateShaderProgram(const std::string& vertexShaderPath, const std::strin
 }
 
 void CreateGraphicsPipeline() {
-    gPipelineProgram = CreateShaderProgram("shaders/shader.vert", "shaders/shader.frag");
+    gPipelineProgram = CreateShaderProgram(
+        "shaders/shader.vert",
+        "shaders/shader.frag"
+    );
 }
 
 void Input() {
@@ -177,7 +209,7 @@ void PreDraw() {
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
     glViewport(0, 0, gScreenWidth, gScreenHeight);
-    glClearColor(1.0f, 0.8f, 0.5f, 1.0f);
+    glClearColor(1.0f, 0.5f, 0.5f, 1.0f);
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
     glUseProgram(gPipelineProgram);
 }
@@ -185,7 +217,7 @@ void PreDraw() {
 void Draw() {
     glBindVertexArray(gVAO);
     glBindBuffer(GL_ARRAY_BUFFER, gVBO);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     glUseProgram(0);
 }
 
